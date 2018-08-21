@@ -16,7 +16,6 @@ list.files()
 
 library(WGCNA)
 library(RColorBrewer)
-
 options(stringsAsFactors=FALSE)
 allowWGCNAThreads()
 
@@ -114,10 +113,10 @@ sft <- pickSoftThreshold(datExpr,
 						powerVector=powers,
 						networkType="signed",
 						verbose=5)
-# networkType = "unsigned"’, adjacency = |cor|^power;
+# networkType = "unsigned", adjacency = |cor|^power;
 # networkType = "signed", adjacency = ((1+cor)/2)^power;
 # networkType = "signed hybrid", adjacency = cor^power if cor>0 and 0 otherwise;
-# networkType = "distance"’, adjacency = (1-(dist/max(dist))^2)^power.
+# networkType = "distance", adjacency = (1-(dist/max(dist))^2)^power.
 
 ## pickSoftThreshold: will use block size 3060.
 ##  pickSoftThreshold: calculating connectivity for given powers...
@@ -190,9 +189,23 @@ save(datExpr,sft,softPower,networkType,net,moduleColors,
 softPower <- 22
 networkType <- "signed"
 adjacency <- adjacency(datExpr,power=softPower,type=networkType)
+adjacency[1:5,1:5]
+##              MMT00000044  MMT00000046  MMT00000051  MMT00000080  MMT00000102
+## MMT00000044 1.000000e+00 1.017339e-07 1.695517e-06 3.969534e-06 1.011784e-06
+## MMT00000046 1.017339e-07 1.000000e+00 2.801347e-15 5.707620e-08 1.315773e-15
+## MMT00000051 1.695517e-06 2.801347e-15 1.000000e+00 6.993674e-08 1.313098e-06
+## MMT00000080 3.969534e-06 5.707620e-08 6.993674e-08 1.000000e+00 3.334227e-08
+## MMT00000102 1.011784e-06 1.315773e-15 1.313098e-06 3.334227e-08 1.000000e+00
 
 TOM <- TOMsimilarity(adjacency,TOMType="signed")
 dissTOM <- 1-TOM
+dissTOM[1:5,1:5]
+##           [,1]      [,2]      [,3]      [,4]      [,5]
+## [1,] 0.0000000 0.9999996 0.9999810 0.9999815 0.9999964
+## [2,] 0.9999996 0.0000000 1.0000000 0.9999928 1.0000000
+## [3,] 0.9999810 1.0000000 0.0000000 0.9999909 0.9997470
+## [4,] 0.9999815 0.9999928 0.9999909 0.0000000 0.9999983
+## [5,] 0.9999964 1.0000000 0.9997470 0.9999983 0.0000000
 
 geneTree <- hclust(as.dist(dissTOM),method="average")
 pdf(file="04.man_genes_cluster_tree.pdf",width=12,height=4)
@@ -345,7 +358,7 @@ write.table(text,file="06.modules_traits_relationships.xls",
 		quote=F,sep="\t",row.names=F)
 
 ###################################################################################################
-# 07. Relating genes to external information (samples/traits)
+# 07. Relating nodes to external information (samples/traits)
 
 modNames <- names(MEs)
 geneModuleMembership <- cor(datExpr[,net$goodGenes],MEs,use="p")
@@ -371,6 +384,22 @@ geneTraitSignificance <- as.data.frame(cor(datExpr[,net$goodGenes],trigly,use="p
 GSPvalue <- as.data.frame(corPvalueStudent(as.matrix(geneTraitSignificance),nSamples))
 names(geneTraitSignificance) <- paste("GS.",names(trigly),sep="")
 names(GSPvalue) <- paste("p.GS.",names(trigly),sep="")
+head(geneTraitSignificance)
+##               GS.trigly
+## MMT00000044  0.01253338
+## MMT00000046  0.13950675
+## MMT00000051 -0.01999059
+## MMT00000080 -0.05179917
+## MMT00000102 -0.06059991
+## MMT00000149 -0.23484857
+head(GSPvalue)
+##             p.GS.trigly
+## MMT00000044 0.885713080
+## MMT00000046 0.107911902
+## MMT00000051 0.818664712
+## MMT00000080 0.552244343
+## MMT00000102 0.486703013
+## MMT00000149 0.006306398
 
 dir.create("07.MM_vs_trigly")
 for(i in 1:(ncol(MEs)-1)) {
@@ -391,7 +420,7 @@ dev.off()
 text <- cbind(geneTraitSignificance,GSPvalue)
 text <- cbind(rownames(text),text)
 colnames(text)[1] <- "genes"
-write.table(text,file="07.genes_module_membership.xls",
+write.table(text,file="07.genes_trait_significance.xls",
 		quote=F,sep="\t",row.names=F)
 
 save(datExpr,sft,softPower,networkType,net,moduleColors,MEs,
@@ -425,15 +454,16 @@ modTOM3 <- TOM3[inModule[1:round((nrow(ATOM)/2))],
 				inModule[(round(nrow(ATOM)/2)+1):nrow(ATOM)]]
 modTOM4 <- TOM4[inModule[(round(nrow(ATOM)/2)+1):nrow(ATOM)],
 				inModule[(round(nrow(ATOM)/2)+1):nrow(ATOM)]]
-
 modTOM <- rbind(cbind(modTOM1,modTOM3),cbind(modTOM2,modTOM4))
 IMConn <- softConnectivity(datExpr[,net$goodGenes][,modGenes])
+
 cyt1 <- exportNetworkToCytoscape(modTOM,
 		edgeFile=paste("CytoscapeInput-edges-",paste(module,collapse="-"),".txt",sep=""),
 		nodeFile=paste("CytoscapeInput-nodes-",paste(module,collapse="-"),".txt",sep=""),
 		weighted=TRUE,threshold=0.02,
 		nodeNames=modGenes,altNodeNames=modGenes,
 		nodeAttr=moduleColors[net$blockGenes[[1]]][inModule])
+
 out <- cbind(modGenes,IMConn)
 colnames(out) <- c("gene","connectivity")
 out <- out[order(as.numeric(out[,2]),decreasing=T),]

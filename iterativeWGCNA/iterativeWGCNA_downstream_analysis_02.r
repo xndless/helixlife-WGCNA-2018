@@ -2,13 +2,20 @@ library(WGCNA)
 
 args <- commandArgs()
 
-MEs <- read.table("final-eigengenes.txt",header=T,row.names=1)
-MMs <- read.table("final-membership.txt",header=T)
-expr <- read.table(args[5],header=T,check.names=F,row.names=1)
+MEs <- read.table(args[6],header=T,row.names=1)
+MMs <- read.table(args[7],header=T)
+#MEs <- read.table("final-eigengenes.txt",header=T,row.names=1)
+#MMs <- read.table("final-membership.txt",header=T)
+expr <- read.table(args[8],header=T,check.names=F,row.names=1)
+
+dir.create(args[9])
+setwd(args[9])
+#dir.create("02.relationship_analysis")
+#setwd("02.relationship_analysis")
 
 for(i in 1:(nrow(MEs)-1)) {
 which.module <- rownames(MEs)[i]
-pdf(file=paste("01.expression_ME/expression_ME_",which.module,".pdf",sep=""),25,10)
+pdf(file=paste("expression_ME_",which.module,".pdf",sep=""),25,10)
 gene <- MMs[MMs$Module==which.module,]$Gene
 expr1 <- expr[match(gene,rownames(expr)),]
 ME <- as.matrix(MEs[which.module,])
